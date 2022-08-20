@@ -4,10 +4,8 @@ pub enum Constant {
     Bool(bool),
     String(String),
     Float(f64),
-    Usize(usize),
     Int(i64),
     Id(u64),
-    List(Vec<Constant>),
 }
 
 #[derive(Debug, Clone)]
@@ -18,28 +16,27 @@ pub enum IndepInstr {
 
 #[derive(Debug, Clone)]
 pub enum Instr { // All strings here are local variables
-
-    // BoolEqual, BoolAnd, BoolOr, BoolXor
-    // StringEqual
-    // FloatEqual (float compare?)
-    // IdEqual
-    // ListLen 
-    // IntEqual, IntLessThan, IntGreaterThan
-    // UsizeEqual, USizeLessThan, USizeGreaterThan
-    // FloatAdd, mult, div, sub
-    // IntAdd, mult, div, sub 
-
+    Xor { result : String, left : String, right : String },
+    Not { result : String, input : String },
+    Or { result : String, left : String, right : String },
+    And { result : String, left : String, right : String },
+    GreaterThan { result : String, left : String, right : String },
+    LessThan { result : String, left : String, right : String },
+    Equal { result : String, left : String, right : String },
+    Add { result : String, left : String, right : String },
+    Sub { result : String, left : String, right : String },
+    Mult { result : String, left : String, right : String },
+    Div { result : String, left : String, right : String },
     Call { name : String, params : Vec<String> },
-    CallWithReturn { name : String, params : Vec<String>, target : String },
+    CallWithReturn { name : String, params : Vec<String>, result : String },
     SystemCall { name : String, params : Vec<String> },
-    SystemCallWithReturn { name : String, params : Vec<String>, target : String },
-    LoadAddress { target: String, source : String },
-    // Store the target at whatever address is in address variable with some offset
-    Store { address: String, offset : usize, target : String },
-    Set { target : String, value : Constant },
-    Loop(Vec<Insr>),
-    If { test : String, true_case : Vec<Instr>, false_case : Vec<Instr> },
-    Break,
+    SystemCallWithReturn { name : String, params : Vec<String>, result : String },
+    LoadAddress { result : String, address : String },
+    Store { address : String, offset : String, input : String },
+    Set { result : String, value : Constant },
+    Label(String),
+    Jump(String),
+    BranchOnFalse { label : String, input : String },
 }
 
 // allocate and free can be a sys call if the heap is passed into the sys call
@@ -55,11 +52,9 @@ pub enum Data {
     Bool(bool),
     String(String),
     Float(f64),
-    Usize(usize),
     Int(i64),
     Id(u64),
     DataAddress(DataAddress),
-    List(Vec<Data>),
 }
 
 
