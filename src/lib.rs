@@ -1,4 +1,6 @@
 
+use std::collections::HashMap;
+
 #[derive(Debug, Clone)]
 pub enum Constant {
     Bool(bool),
@@ -45,9 +47,6 @@ pub enum Instr { // All strings here are local variables
 pub struct DataAddress(usize);
 
 #[derive(Debug, Clone)]
-pub struct FunctionAddress(usize);
-
-#[derive(Debug, Clone)]
 pub enum Data {
     Bool(bool),
     String(String),
@@ -55,8 +54,17 @@ pub enum Data {
     Int(i64),
     Id(u64),
     DataAddress(DataAddress),
+    Function(String),
 }
 
+/*pub fn run( entry : String
+          , top_level : &Vec<IndepInstr>
+          , heap : &mut Heap<DataAddress, Data>
+          , sys_calls : _ 
+          ) -> Result<_, _> {
+
+
+}*/
 
 #[cfg(test)]
 mod tests {
