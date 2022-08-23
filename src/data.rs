@@ -27,6 +27,7 @@ pub enum Instr { // All strings here are local variables
     Sub { result : String, left : String, right : String },
     Mult { result : String, left : String, right : String },
     Div { result : String, left : String, right : String },
+    Remainder { result : String, left : String, right : String },
     Call { name : String, params : Vec<String> },
     CallWithReturn { name : String, params : Vec<String>, result : String },
     SystemCall { name : String, params : Vec<String> },
@@ -36,6 +37,7 @@ pub enum Instr { // All strings here are local variables
     Set { result : String, value : Constant },
     Label(String),
     Jump(String),
+    Return(String),
     BranchOnFalse { label : String, input : String },
 }
 
