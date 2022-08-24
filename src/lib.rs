@@ -8,57 +8,137 @@ use std::error::Error;
 use crate::error::VmError;
 use crate::data::*;
 
-#[derive(Debug)]
-enum Global<'a> { 
-    Const(&'a Constant),
-    Func { params : &'a Vec<String>, instrs : &'a Vec<Instr> },
-}
-
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-pub fn run( entry : String
-          , independent_instructions : &Vec<IndepInstr>
-          , heap : &mut HashMap<DataAddress, Data>
-          , sys_calls : &Vec<fn(HashMap<DataAddress, Data>, Vec<Data>) -> Result<Data>>
-          ) -> Result<Data> {
-    let mut globals = HashMap::new();
+macro_rules! gl {
+    ($global:ident, $local:ident, $target:ident) => {
+        $local.get($target).or($global.get($target)).ok_or_else(|| Box::new(VmError::VariableNotFound($target.to_string())))?;
+    };
+}
+
+pub fn run<'a>( entry : &str 
+          , independent_instructions : &Vec<IndepInstr<'a>>
+          , heap : &mut HashMap<DataAddress, Data<'a>>
+          , sys_calls : &Vec<fn(HashMap<DataAddress, Data<'a>>, Vec<Data<'a>>) -> Result<Data<'a>>>
+          ) -> Result<Data<'a>> {
+    let mut globals : HashMap<&str, Data> = HashMap::new();
+    let mut functions : HashMap<&str, _> = HashMap::new();
+
     for idep_instr in independent_instructions {
         match idep_instr {
-            IndepInstr::DefineConstant { name, .. } if globals.contains_key(&name) => {
-                return Err(Box::new(VmError::GlobalRedefinition(name.clone())));
+            IndepInstr::DefineConstant { name, .. } if globals.contains_key(name) => {
+                error(VmError::GlobalRedefinition(name.to_string()))?;
             },
             IndepInstr::DefineFunction { name, params, instrs } => {
-                return Err(Box::new(VmError::GlobalRedefinition(name.clone())));
+                error(VmError::GlobalRedefinition(name.to_string()))?;
             },
             IndepInstr::DefineConstant { name, value } => {
-                globals.insert( name, Global::Const(value) );
+                globals.insert( name, const_to_data(value) );
             },
             IndepInstr::DefineFunction { name, params, instrs } => {
-                globals.insert( name, Global::Func { params, instrs } );
+                functions.insert( name, ( params, instrs ) );
             },
         }
     }
 
-    let mut stack = vec![]; // hashmap<string, data> + func name? + return index // local context
-    let mut intr_ptr = 0;
+    //let mut stack = vec![]; // hashmap<string, data> + func name? + return index // local context
+    let mut instr_ptr = 0;
     let mut current_func = entry;
-    let mut locals = HashMap::new(); 
+    let mut locals : HashMap<&str, Data> = HashMap::new(); 
 
-    if !globals.contains_key(&entry) {
-        error(VmError::UndefinedGlobal(entry))?;
-    }
     
-    if let Global::Func { params, instrs } = *globals.get(&entry).unwrap() {
+    match functions.get(entry) {
+        Some((_, instrs)) => { // TODO:  params for entry function make any sense?
 
-        if instrs.len() < 1 {
-            error(VmError::EmptyFunction(entry))?;
-        }
+            // TODO loop here?
+            if instrs.len() <= instr_ptr {
+                //TODO return?
+            }
 
+            match &instrs[instr_ptr] {
+                Instr::Xor { result, left, right } => {
+                    let l = gl!(globals, locals, left);
+                    let r = gl!(globals, locals, right);
 
+                    let r = match (l, r) {
+                        (Data::Bool(vl), Data::Bool(vr)) => vl ^ vr,
+                        _ => panic!("TODO::Need error"),
+                    };
+
+                    locals.insert( result, Data::Bool(r) );
+                    instr_ptr+=1;
+                },
+                Instr::Not { result, input } => {
+
+                },
+                Instr::Or { result, left, right } => {
+
+                },
+                Instr::And { result, left, right } => {
+
+                },
+                Instr::GreaterThan { result, left, right } => {
+
+                },
+                Instr::LessThan { result, left, right } => {
+
+                },
+                Instr::Equal { result, left, right } => {
+
+                },
+                Instr::Add { result, left, right } => {
+
+                },
+                Instr::Sub { result, left, right } => {
+
+                },
+                Instr::Mult { result, left, right } => {
+
+                },
+                Instr::Div { result, left, right } => {
+
+                },
+                Instr::Remainder { result, left, right } => {
+
+                },
+                Instr::Call { name, params } => {
+
+                },
+                Instr::CallWithReturn { name, params, result } => {
+
+                },
+                Instr::SystemCall { name, params } => {
+
+                },
+                Instr::SystemCallWithReturn { name, params, result } => {
+
+                },
+                Instr::LoadAddress { result, address } => {
+
+                },
+                Instr::Store { address, offset, input } => {
+
+                },
+                Instr::Set { result, value } => {
+
+                },
+                Instr::Label(name) => {
+
+                },
+                Instr::Jump(name) => {
+
+                },
+                Instr::Return(name) => {
+
+                },
+                Instr::BranchOnFalse { label, input } => {
+
+                },
+            }
+        },
+        None => error(VmError::UndefinedGlobal(entry.to_string()))?,
     }
-    else {
-        error(VmError::CannotCallNonFunction(entry))?;
-    }
+
     Ok(Data::Id(0))
 
 }
@@ -66,6 +146,16 @@ pub fn run( entry : String
 fn error(e : VmError) -> Result<()> {
     Err(Box::new(e))
 } 
+
+fn const_to_data(c : &Constant) -> Data {
+    match c {
+        Constant::Bool(v) => Data::Bool(*v),
+        Constant::String(v) => Data::String(v.to_string()),
+        Constant::Float(v) => Data::Float(*v),
+        Constant::Int(v) => Data::Int(*v),
+        Constant::Id(v) => Data::Id(*v),
+    }
+}
 
 #[cfg(test)]
 mod tests {
