@@ -4,7 +4,7 @@ pub enum VmError {
     GlobalRedefinition(String),
     UndefinedGlobal(String),
     CannotCallNonFunction(String),
-    EmptyFunction(String),
+    VariableNotFound(String),
 }
 
 impl std::fmt::Display for VmError {
@@ -13,7 +13,7 @@ impl std::fmt::Display for VmError {
             VmError::GlobalRedefinition(name) => write!(f, "attempt to redefine global: {}", name),
             VmError::UndefinedGlobal(name) => write!(f, "attempt to access undefined global: {}", name),
             VmError::CannotCallNonFunction(name) => write!(f, "attempt to call non-function:  {}", name),
-            VmError::EmptyFunction(name) => write!(f, "unexpected empty function:  {}", name),
+            VmError::VariableNotFound(name) => write!(f, "could not find variable:  {}", name),
         }
     }
 }
