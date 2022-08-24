@@ -41,99 +41,107 @@ pub fn run<'a>( entry : &str
         }
     }
 
-    //let mut stack = vec![]; // hashmap<string, data> + func name? + return index // local context
-    let mut instr_ptr = 0;
-    let mut current_func = entry;
-    let mut locals : HashMap<&str, Data> = HashMap::new(); 
-
+    let mut stack : Vec<(usize, HashMap<&str, Data>, &str)> = vec![]; 
     
     match functions.get(entry) {
-        Some((_, instrs)) => { // TODO:  params for entry function make any sense?
+        Some((_, mut instrs)) => { // TODO:  params for entry function make any sense?
 
-            // TODO loop here?
-            if instrs.len() <= instr_ptr {
-                //TODO return?
-            }
+            let mut instr_ptr = 0;
+            let mut locals : HashMap<&str, Data> = HashMap::new();
+            let mut current_function = entry;
 
-            match &instrs[instr_ptr] {
-                Instr::Xor { result, left, right } => {
-                    let l = gl!(globals, locals, left);
-                    let r = gl!(globals, locals, right);
+            loop {
 
-                    let r = match (l, r) {
-                        (Data::Bool(vl), Data::Bool(vr)) => vl ^ vr,
-                        _ => panic!("TODO::Need error"),
-                    };
+                // TODO loop here?
+                if instrs.len() <= instr_ptr {
+                    //TODO return?
+                }
 
-                    locals.insert( result, Data::Bool(r) );
-                    instr_ptr+=1;
-                },
-                Instr::Not { result, input } => {
+                match &instrs[instr_ptr] {
+                    Instr::Xor { result, left, right } => {
+                        let l = gl!(globals, locals, left);
+                        let r = gl!(globals, locals, right);
 
-                },
-                Instr::Or { result, left, right } => {
+                        let r = match (l, r) {
+                            (Data::Bool(vl), Data::Bool(vr)) => vl ^ vr,
+                            _ => panic!("TODO::Need error"),
+                        };
 
-                },
-                Instr::And { result, left, right } => {
+                        locals.insert( result, Data::Bool(r) );
+                        instr_ptr+=1;
+                    },
+                    Instr::Not { result, input } => {
 
-                },
-                Instr::GreaterThan { result, left, right } => {
+                    },
+                    Instr::Or { result, left, right } => {
 
-                },
-                Instr::LessThan { result, left, right } => {
+                    },
+                    Instr::And { result, left, right } => {
 
-                },
-                Instr::Equal { result, left, right } => {
+                    },
+                    Instr::GreaterThan { result, left, right } => {
 
-                },
-                Instr::Add { result, left, right } => {
+                    },
+                    Instr::LessThan { result, left, right } => {
 
-                },
-                Instr::Sub { result, left, right } => {
+                    },
+                    Instr::Equal { result, left, right } => {
 
-                },
-                Instr::Mult { result, left, right } => {
+                    },
+                    Instr::Add { result, left, right } => {
 
-                },
-                Instr::Div { result, left, right } => {
+                    },
+                    Instr::Sub { result, left, right } => {
 
-                },
-                Instr::Remainder { result, left, right } => {
+                    },
+                    Instr::Mult { result, left, right } => {
 
-                },
-                Instr::Call { name, params } => {
+                    },
+                    Instr::Div { result, left, right } => {
 
-                },
-                Instr::CallWithReturn { name, params, result } => {
+                    },
+                    Instr::Remainder { result, left, right } => {
 
-                },
-                Instr::SystemCall { name, params } => {
+                    },
+                    Instr::Call { name, params } => {
 
-                },
-                Instr::SystemCallWithReturn { name, params, result } => {
+                        // TODO
+                        let mut old_locals : HashMap<&str, Data> = HashMap::new();
+                        std::mem::swap(&mut old_locals, &mut locals);
 
-                },
-                Instr::LoadAddress { result, address } => {
+                        stack.push( (instr_ptr, old_locals, current_function) );
+                    },
+                    Instr::CallWithReturn { name, params, result } => {
 
-                },
-                Instr::Store { address, offset, input } => {
+                    },
+                    Instr::SystemCall { name, params } => {
 
-                },
-                Instr::Set { result, value } => {
+                    },
+                    Instr::SystemCallWithReturn { name, params, result } => {
 
-                },
-                Instr::Label(name) => {
+                    },
+                    Instr::LoadAddress { result, address } => {
 
-                },
-                Instr::Jump(name) => {
+                    },
+                    Instr::Store { address, offset, input } => {
 
-                },
-                Instr::Return(name) => {
+                    },
+                    Instr::Set { result, value } => {
 
-                },
-                Instr::BranchOnFalse { label, input } => {
+                    },
+                    Instr::Label(name) => {
 
-                },
+                    },
+                    Instr::Jump(name) => {
+
+                    },
+                    Instr::Return(name) => {
+
+                    },
+                    Instr::BranchOnFalse { label, input } => {
+
+                    },
+                }
             }
         },
         None => error(VmError::UndefinedGlobal(entry.to_string()))?,
