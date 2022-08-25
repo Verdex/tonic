@@ -10,17 +10,30 @@ use crate::data::*;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-macro_rules! gl {
-    ($global:ident, $local:ident, $target:ident) => {
-        $local.get($target).or($global.get($target)).ok_or_else(|| Box::new(VmError::VariableNotFound($target.to_string())))?;
+macro_rules! lg_get {
+    ($local:ident, $global:ident, $target:ident) => {
+        $local.get($target).or($global.get($target)).ok_or_else(|| Box::new(VmError::VariableNotFound($target.to_string())))?
     };
 }
 
-pub fn run<'a>( entry : &str 
-          , independent_instructions : &Vec<IndepInstr<'a>>
+macro_rules! lg_remove {
+    ($local:ident, $global:ident, $target:ident) => {
+        $local.remove($target).or($global.get($target).map(|x| x.clone())).ok_or_else(|| Box::new(VmError::VariableNotFound($target.to_string())))?
+    };
+}
+
+struct Frame<'a> {
+    instr_ptr : usize,
+    locals : HashMap<&'a str, Data<'a>>,
+    current_function : &'a str,
+    return_local : Option<&'a str>,
+}
+
+pub fn run<'a>( entry : &'a str 
+          , independent_instructions : &'a Vec<IndepInstr<'a>>
           , heap : &mut HashMap<DataAddress, Data<'a>>
-          , sys_calls : &Vec<fn(HashMap<DataAddress, Data<'a>>, Vec<Data<'a>>) -> Result<Data<'a>>>
-          ) -> Result<Data<'a>> {
+          , sys_calls : &Vec<fn(&mut HashMap<DataAddress, Data<'a>>, Vec<Data<'a>>) -> Result<Data<'a>>>
+          ) -> Result<Option<Data<'a>>> {
     let mut globals : HashMap<&str, Data> = HashMap::new();
     let mut functions : HashMap<&str, _> = HashMap::new();
 
@@ -41,7 +54,8 @@ pub fn run<'a>( entry : &str
         }
     }
 
-    let mut stack : Vec<(usize, HashMap<&str, Data>, &str)> = vec![]; 
+    let mut stack : Vec<Frame> = vec![]; 
+    let mut final_return : Option<Data<'a>> = None;
     
     match functions.get(entry) {
         Some((_, mut instrs)) => { // TODO:  params for entry function make any sense?
@@ -52,15 +66,20 @@ pub fn run<'a>( entry : &str
 
             loop {
 
-                // TODO loop here?
                 if instrs.len() <= instr_ptr {
-                    //TODO return?
+                    if stack.len() == 0 {
+                        break;
+                    }
+
+                    Frame { instr_ptr, locals, current_function, .. } = stack.pop().unwrap(); 
+                    let fun = functions.get(current_function).unwrap();
+                    instrs = fun.1; 
                 }
 
                 match &instrs[instr_ptr] {
                     Instr::Xor { result, left, right } => {
-                        let l = gl!(globals, locals, left);
-                        let r = gl!(globals, locals, right);
+                        let l = lg_get!(locals, globals, left);
+                        let r = lg_get!(locals, globals, right);
 
                         let r = match (l, r) {
                             (Data::Bool(vl), Data::Bool(vr)) => vl ^ vr,
@@ -104,12 +123,11 @@ pub fn run<'a>( entry : &str
 
                     },
                     Instr::Call { name, params } => {
-
-                        // TODO
                         let mut old_locals : HashMap<&str, Data> = HashMap::new();
                         std::mem::swap(&mut old_locals, &mut locals);
 
-                        stack.push( (instr_ptr, old_locals, current_function) );
+                        stack.push( Frame { instr_ptr, locals: old_locals, current_function, return_local: None } );
+                        // TODO
                     },
                     Instr::CallWithReturn { name, params, result } => {
 
@@ -136,7 +154,21 @@ pub fn run<'a>( entry : &str
 
                     },
                     Instr::Return(name) => {
+                        let r = lg_remove!(locals, globals, name);
 
+                        if stack.len() == 0 {
+                            final_return = Some(r);
+                            break;
+                        }
+
+                        let mut return_local = None;
+                        Frame { instr_ptr, locals, current_function, return_local } = stack.pop().unwrap(); 
+                        let fun = functions.get(current_function).unwrap();
+                        instrs = fun.1; 
+
+                        if let Some(local) = return_local {
+                            locals.insert( local, r );
+                        }
                     },
                     Instr::BranchOnFalse { label, input } => {
 
@@ -147,7 +179,7 @@ pub fn run<'a>( entry : &str
         None => error(VmError::UndefinedGlobal(entry.to_string()))?,
     }
 
-    Ok(Data::Id(0))
+    Ok(final_return)
 
 }
 
