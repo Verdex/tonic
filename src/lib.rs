@@ -123,8 +123,15 @@ pub fn run<'a>( entry : &'a str
 
                     },
                     Instr::Call { name, params } => {
+
+                        let new_function = functions.get(name).ok_or_else(|| Box::new(VmError::UndefinedGlobal(name.to_string())))?;
+
                         let mut old_locals : HashMap<&str, Data> = HashMap::new();
                         std::mem::swap(&mut old_locals, &mut locals);
+
+                        instr_ptr += 1;
+                        
+                        // TODO copy over params from old_locals into locals
 
                         stack.push( Frame { instr_ptr, locals: old_locals, current_function, return_local: None } );
                         // TODO
